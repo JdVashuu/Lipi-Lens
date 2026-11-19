@@ -5,8 +5,8 @@ describe('Kannada Akshara FST Splitter - 30+ Words Test Suite', () => {
   const testWords = [
     // 1-5: Classic Kannada Rajyotsava & State words
     { word: 'ರಾಜ್ಯೋತ್ಸವ', expectedCount: 4, checkCluster: 'ಜ್ಯೋ', base: 'ಜ', otta: 'ಯ', matraCode: 'U+0CCB' }, // Long-O U+0CCB
-    { word: 'ಕರ್ನಾಟಕ', expectedCount: 4, checkCluster: 'ರ್ನ', base: 'ರ', otta: 'ನ' },
-    { word: 'ಕನ್ನಡ', expectedCount: 3, checkCluster: 'ನ್ನಡ', base: 'ನ', otta: 'ನ' },
+    { word: 'ಕರ್ನಾಟಕ', expectedCount: 4, checkCluster: 'ರ್ನಾ', base: 'ರ', otta: 'ನ' },
+    { word: 'ಕನ್ನಡ', expectedCount: 3, checkCluster: 'ನ್ನ', base: 'ನ', otta: 'ನ' },
     { word: 'ಬೆಂಗಳೂರು', expectedCount: 4, checkCluster: 'ಬೆಂ', base: 'ಬ' },
     { word: 'ಮೈಸೂರು', expectedCount: 3 },
 
@@ -40,7 +40,7 @@ describe('Kannada Akshara FST Splitter - 30+ Words Test Suite', () => {
 
     // 26-30+: Everyday Signboards & Expressions
     { word: 'ಶಾಲೆ', expectedCount: 2 },
-    { word: 'ಪುಸ್ತಕ', expectedCount: 3, checkCluster: 'ಸ್ತಕ', base: 'ಸ', otta: 'ತ' },
+    { word: 'ಪುಸ್ತಕ', expectedCount: 3, checkCluster: 'ಸ್ತ', base: 'ಸ', otta: 'ತ' },
     { word: 'ಆಸ್ಪತ್ರೆ', expectedCount: 3, checkCluster: 'ಸ್ಪ', base: 'ಸ', otta: 'ಪ' },
     { word: 'ಸ್ವಾಗತ', expectedCount: 3, checkCluster: 'ಸ್ವಾ', base: 'ಸ', otta: 'ವ' },
     { word: 'ಧನ್ಯವಾದ', expectedCount: 4 },
@@ -48,13 +48,29 @@ describe('Kannada Akshara FST Splitter - 30+ Words Test Suite', () => {
     { word: 'ಹಬ್ಬ', expectedCount: 2, checkCluster: 'ಬ್ಬ', base: 'ಬ', otta: 'ಬ' },
   ];
 
-  it('correctly segments at least 32 distinct Kannada words into proper grapheme clusters', () => {
-    expect(testWords.length).toBeGreaterThanOrEqual(30);
-
-    for (const item of testWords) {
+  // 32+ individual unit tests for each benchmark word
+  testWords.forEach((item, index) => {
+    it(`[Word ${index + 1}/32] decomposes '${item.word}' into ${item.expectedCount} aksharas`, () => {
       const aksharas = segmentWordIntoAksharas(item.word);
       expect(aksharas.length).toBe(item.expectedCount);
-    }
+
+      if (item.checkCluster) {
+        const found = aksharas.some(a => a.raw === item.checkCluster);
+        expect(found).toBe(true);
+      }
+      if (item.base) {
+        const matching = aksharas.find(a => a.raw === item.checkCluster);
+        if (matching) {
+          expect(matching.baseGlyph).toBe(item.base);
+        }
+      }
+      if (item.otta) {
+        const matching = aksharas.find(a => a.raw === item.checkCluster);
+        if (matching) {
+          expect(matching.ottaksharas.some(o => o.glyph === item.otta)).toBe(true);
+        }
+      }
+    });
   });
 
   it('correctly uses U+0CCB for long-o in ರಾಜ್ಯೋತ್ಸವ and outputs precise formation equation', () => {

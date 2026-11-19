@@ -150,6 +150,7 @@ export const KarnatakaUnityMap: React.FC<KarnatakaUnityMapProps> = ({ onLoadScen
                 onClick={() => {
                   onLoadScene(pin.sceneId);
                 }}
+                aria-label={`Load ${pin.nameEnglish} signboard into 3D AR Scanner`}
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 group transition-all hover:scale-125 z-20"
                 style={{ left: `${pin.coords.x}%`, top: `${pin.coords.y}%` }}
               >

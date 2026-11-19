@@ -309,7 +309,7 @@ export const KannadaKali: React.FC<KannadaKaliProps> = ({ onOpenXRay }) => {
               </h4>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
-              {Object.entries(KANNADA_CONSONANTS).slice(0, 25).map(([glyph, info]) => (
+              {Object.entries(KANNADA_CONSONANTS).map(([glyph, info]) => (
                 <div
                   key={glyph}
                   onClick={() => playWordAudio(glyph)}
@@ -323,6 +323,44 @@ export const KannadaKali: React.FC<KannadaKaliProps> = ({ onOpenXRay }) => {
                   </span>
                   <span className="text-[9px] text-slate-500 font-mono mt-0.5 text-center truncate w-full">
                     {info.varga.split(' ')[0]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              <h4 className="text-sm font-bold text-white">
+                ೩. ಸಂಯುಕ್ತಾಕ್ಷರಗಳು / ಒತ್ತಕ್ಷರಗಳು (Common Conjuncts & Ottaksharas)
+              </h4>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
+              {[
+                { glyph: 'ಕ್ಕ', name: 'ಕ-ವತ್ತಕ್ಷರ', trans: 'kka', base: 'ಕ್ + ಕ' },
+                { glyph: 'ತ್ತ', name: 'ತ-ವತ್ತಕ್ಷರ', trans: 'tta', base: 'ತ್ + ತ' },
+                { glyph: 'ನ್ನ', name: 'ನ-ವತ್ತಕ್ಷರ', trans: 'nna', base: 'ನ್ + ನ' },
+                { glyph: 'ಷ್ಟ', name: 'ಟ-ವತ್ತಕ್ಷರ', trans: 'ṣṭa', base: 'ಷ್ + ಟ' },
+                { glyph: 'ರ್ಕ', name: 'ರೇಕಾಕ್ಷರ', trans: 'rka', base: 'ರ್ + ಕ' },
+                { glyph: 'ತ್ಯ', name: 'ಯ-ವತ್ತಕ್ಷರ', trans: 'tya', base: 'ತ್ + ಯ' },
+                { glyph: 'ಜ್ಯೋ', name: 'ರಾಜ್ಯೋತ್ಸವ', trans: 'jyō', base: 'ಜ್ + ಯ್ + ೋ' },
+                { glyph: 'ಶ್ರಿ', name: 'ಶ್ರೀ-ಕಾರ', trans: 'śri', base: 'ಶ್ + ರ್ + ಇ' },
+              ].map((item) => (
+                <div
+                  key={item.glyph}
+                  onClick={() => onOpenXRay(item.glyph)}
+                  className="bg-space-950 border border-slate-800 hover:border-emerald-400 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center group"
+                  title="Tap to X-Ray conjunct formation"
+                >
+                  <span className="text-2xl font-bold font-kannada text-emerald-300 group-hover:scale-110 transition-transform">
+                    {item.glyph}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-white mt-1">
+                    /{item.trans}/
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-mono mt-0.5 text-center truncate w-full">
+                    {item.base}
                   </span>
                 </div>
               ))}

@@ -418,7 +418,8 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
               max="25"
               value={pitch}
               onChange={e => setPitch(Number(e.target.value))}
-              className="w-18 accent-rajyotsava-gold cursor-pointer"
+              aria-label="3D Pitch rotation slider"
+              className="w-16 accent-rajyotsava-gold cursor-pointer"
             />
             <span className="w-5 font-mono text-slate-300 text-[11px]">{pitch}°</span>
           </div>
@@ -431,9 +432,24 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
               max="30"
               value={yaw}
               onChange={e => setYaw(Number(e.target.value))}
-              className="w-18 accent-rajyotsava-gold cursor-pointer"
+              aria-label="3D Yaw rotation slider"
+              className="w-16 accent-rajyotsava-gold cursor-pointer"
             />
             <span className="w-5 font-mono text-slate-300 text-[11px]">{yaw}°</span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-mono text-[10px]">Roll</span>
+            <input
+              type="range"
+              min="-25"
+              max="25"
+              value={roll}
+              onChange={e => setRoll(Number(e.target.value))}
+              aria-label="3D Roll rotation slider"
+              className="w-16 accent-rajyotsava-gold cursor-pointer"
+            />
+            <span className="w-5 font-mono text-slate-300 text-[11px]">{roll}°</span>
           </div>
 
           <button
@@ -444,6 +460,7 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
               setCustomQuads({});
             }}
             title="ಮರುಹೊಂದಿಸಿ (Reset Perspective)"
+            aria-label="Reset 3D perspective orientation"
             className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -457,6 +474,7 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className="px-2.5 py-1.5 rounded-lg bg-space-850 hover:bg-space-800 border border-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all"
             title="ಚಿತ್ರ ಅಪ್‌ಲೋಡ್ (Upload Custom Image)"
+            aria-label="Upload custom signboard image"
           >
             <Upload className="w-3.5 h-3.5 text-cyan-400" />
             <span>ಅಪ್‌ಲೋಡ್ (Upload)</span>
@@ -470,6 +488,7 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
                 ? 'bg-rajyotsava-crimson text-white border-rajyotsava-crimson shadow-glow-crimson'
                 : 'bg-space-800 border-slate-700 text-slate-300 hover:border-slate-500'
             }`}
+            aria-label={isLiveCamera ? 'Stop Live Camera' : 'Start Live Camera AR Scanner'}
           >
             <Camera className="w-3.5 h-3.5" />
             <span>{isLiveCamera ? 'ಕ್ಯಾಮರಾ ನಿಲ್ಲಿಸಿ' : 'ಕ್ಯಾಮರಾ AR (Live Camera)'}</span>

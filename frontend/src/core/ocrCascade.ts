@@ -108,7 +108,7 @@ class OcrCascadeEngine {
           latencyMs: elapsed,
           pHash: regionHint.pHash,
           hammingDistance: dist,
-          source: 'Local IndexedDB/Memory 64-bit dHash Cache',
+          source: 'Local IndexedDB/Memory 64-bit dHash Cache (demo cache)',
           culturalNote: regionHint.culturalNote,
         };
       }
@@ -131,7 +131,7 @@ class OcrCascadeEngine {
             latencyMs: elapsed,
             pHash: reg.pHash,
             hammingDistance: dist,
-            source: 'Local dHash Cache Match',
+            source: 'Local dHash Cache Match (demo cache)',
             culturalNote: reg.culturalNote,
           };
         }

@@ -143,7 +143,7 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
               <div className={`p-1.5 rounded flex items-center justify-between ${
                 activeTier.includes('EDGE_CACHE') ? 'bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 font-bold' : 'text-slate-500 bg-space-850'
               }`}>
-                <span>T1: pHash Cache</span>
+                <span>T1: pHash (demo cache)</span>
                 <span className="font-mono text-emerald-400">{metrics.cacheHits} Hits (&lt;15ms)</span>
               </div>
 
