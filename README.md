@@ -146,33 +146,5 @@ bun run dev
 ```
 
 ---
-
-## ⚠️ Honest Engineering Limitations
-1. **Camera Permissions:** Live Camera AR requires HTTPS or localhost; when testing on mobile devices over local Wi-Fi, ensure mobile Chrome/Safari is granted camera permissions.
-2. **Web Speech kn-IN Availability:** Built-in Kannada speech synthesis depends on browser operating system voices (Android, macOS, Windows 11); on systems lacking `kn-IN`, the engine automatically engages its built-in Web Audio formant synthesizer fallback.
-3. **Severe Glyph Weathering:** Inscriptions with more than 60% physical surface erosion require human epigraphist interpretation; Shilashasana Mode enhances contrast but cannot reconstruct missing stone chunks.
-
----
-
-## 🎤 3-Minute Hackathon Demo Pitch Script
-
-1. **The Hook (0:00 - 0:30):**  
-   *"Respected judges, happy Kannada Rajyotsava! Every day, millions of people walk past Kannada signboards on BMTC buses, Namma Metro stations, and Darshini restaurants unable to read them. Generic OCR apps slap an image into an LLM prompt and output a disconnected card. Lipi Lens takes a completely different path: treating Kannada script recognition as an edge computer vision, 3D projective geometry, and computational linguistics problem."*
-
-2. **Scan & Spatial AR Hijack (0:30 - 1:15):**  
-   *(Select BMTC Bus Board / Darshini Menu)*  
-   *"Observe this bus board. Lipi Lens computes an 8-degree-of-freedom planar homography matrix $H \in \mathbb{R}^{3\times3}$, samples the boundary colors to smoothly mask the original text, and warps the English translation directly onto the sign with hardware-accelerated CSS matrix3d. As I rotate the Pitch and Yaw sliders, the translation stays locked to the physical windshield in 3D perspective at 60 FPS."*
-
-3. **Akshara X-Ray on ರಾಜ್ಯೋತ್ಸವ (1:15 - 1:55):**  
-   *(Tap **ರಾಜ್ಯೋತ್ಸವ**)*  
-   *"Kannada is an agglutinative abugida where consonants stack vertically. Our deterministic Unicode state machine over U+0C80 to U+0CFF breaks this down into exact code points: ಜ (U+0C9C) + ವಿರಾಮ (U+0CCD) + ಯ (U+0CAF) + long-o ೋ (U+0CCB) to form ಜ್ಯೋ. It also calculates the Guna Sandhi rule: ರಾಜ್ಯ + ಉತ್ಸವ = ರಾಜ್ಯೋತ್ಸವ, with synchronized slow-motion pronunciation."*
-
-4. **Kannada Kali, Begur Stone & Unity Map (1:55 - 2:35):**  
-   *"In Kannada Kali, users save words to a Spaced-Repetition Leitner Journal and take the 50-Word November challenge. Switching to our Heritage Timeline, our Shilashasana filter applies contrast enhancement to the 890 CE Begur Hero Stone, revealing the oldest written record of 'Bengaluru' (ಶ್ರೀಮದ್ ಬೆಂಗಳೂರ ಕಾಳಗದೊಳ್). Our Karnataka Unity Map honors the 5 regions unified on 1 Nov 1956 with regional dialect cards."*
-
-5. **Offline Proof & Closing Pitch (2:35 - 3:00):**  
-   *(Toggle Airplane Mode)*  
-   *"Even with cellular connection completely disconnected on a moving bus, our Telemetry HUD proves our 64-bit dHash cache and WASM FST run locally at 60 FPS with under 15ms latency."*
-
-> ### **Closing Line:**
+ 
 > *"The language lives on in those who can read it. Lipi Lens helps every Kannadiga, old and new, read their city."*
