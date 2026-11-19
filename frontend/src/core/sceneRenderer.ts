@@ -1,15 +1,21 @@
 /**
- * LipiLens-X (ಲಿಪಿ ಲೆನ್ಸ್-X) - Canvas Scene & Texture Generator
- *
- * Renders high-fidelity physical signboards (BMTC bus, Darshini menu,
- * BBMP street sign, and Halegannada Stone Inscription) onto canvas.
+ * ಲಿಪಿ ಲೆನ್ಸ್ | Lipi Lens - Canvas Scene & Texture Generator
+ * Renders all 8 authentic benchmark signboards with exact visual styling:
+ * 1. BMTC Bus Board
+ * 2. Namma Metro Sign (Purple/Green underground line)
+ * 3. Darshini Hotel Menu (Rosewood & brass studs)
+ * 4. Regulatory Traffic Sign (Green & white highway reflectivity)
+ * 5. Traditional Shop Board (Mysore silk crimson & gold)
+ * 6. Begur Hero Stone Inscription (Ganga dynasty 890 CE granite slab)
+ * 7. Kannada Rajyotsava Celebration Banner (State flag red/yellow)
+ * 8. Municipal Street Name Board (Kuvempu Road amber yellow/black)
  */
 
 import { SampleScene } from '../data/sampleScenes';
 
 export interface RenderOptions {
   showOriginalText?: boolean;
-  shilashasanaFilter?: boolean; // CLAHE & edge enhancement
+  shilashasanaFilter?: boolean;
   claheStrength?: number;
 }
 
@@ -27,18 +33,32 @@ export function renderSceneToCanvas(
     case 'BMTC':
       renderBMTCScene(ctx, width, height);
       break;
+    case 'METRO':
+      renderMetroScene(ctx, width, height);
+      break;
     case 'DARSHINI':
       renderDarshiniScene(ctx, width, height);
       break;
     case 'STREET':
       renderStreetScene(ctx, width, height);
       break;
+    case 'SHOP':
+      renderShopScene(ctx, width, height);
+      break;
     case 'SHILASHASANA':
       renderShilashasanaScene(ctx, width, height);
       break;
+    case 'BANNER':
+      renderBannerScene(ctx, width, height);
+      break;
+    case 'STREET_BOARD':
+      renderStreetBoardScene(ctx, width, height);
+      break;
+    default:
+      renderBMTCScene(ctx, width, height);
   }
 
-  // Draw original text if enabled
+  // Draw original Kannada text if enabled
   if (options.showOriginalText !== false) {
     for (const region of scene.regions) {
       drawOriginalKannadaText(ctx, region);
@@ -55,11 +75,8 @@ export function renderSceneToCanvas(
   ctx.restore();
 }
 
-/**
- * Renders a BMTC bus windshield with route signboard
- */
+/** 1. BMTC Bus */
 function renderBMTCScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  // Bus Body gradient (BMTC Navy Blue / Teal)
   const busGrad = ctx.createLinearGradient(0, 0, 0, h);
   busGrad.addColorStop(0, '#0B1528');
   busGrad.addColorStop(0.3, '#10243E');
@@ -67,12 +84,10 @@ function renderBMTCScene(ctx: CanvasRenderingContext2D, w: number, h: number): v
   ctx.fillStyle = busGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Windshield frame
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 14;
   ctx.strokeRect(30, 30, w - 60, h - 60);
 
-  // Windshield glass tint
   const glassGrad = ctx.createLinearGradient(50, 50, w - 50, h - 50);
   glassGrad.addColorStop(0, 'rgba(15, 23, 42, 0.85)');
   glassGrad.addColorStop(0.4, 'rgba(30, 41, 59, 0.7)');
@@ -81,7 +96,6 @@ function renderBMTCScene(ctx: CanvasRenderingContext2D, w: number, h: number): v
   ctx.fillStyle = glassGrad;
   ctx.fillRect(40, 40, w - 80, h - 80);
 
-  // Destination Board Housing (Dark textured box)
   ctx.fillStyle = '#090D16';
   ctx.strokeStyle = '#475569';
   ctx.lineWidth = 4;
@@ -90,66 +104,71 @@ function renderBMTCScene(ctx: CanvasRenderingContext2D, w: number, h: number): v
   ctx.fill();
   ctx.stroke();
 
-  // LED Grid texture inside housing
   ctx.fillStyle = 'rgba(250, 204, 21, 0.03)';
   for (let y = 70; y < 370; y += 12) {
     ctx.fillRect(110, y, w - 220, 2);
   }
 
-  // Bus Fleet Number & Logo Accent
   ctx.fillStyle = '#E2E8F0';
   ctx.font = '700 13px "JetBrains Mono", monospace';
   ctx.fillText('BMTC VAJRA • ROUTE 201-G / KA-57-F-1984', 120, 85);
-
-  // Windshield glare / reflection streak
-  ctx.save();
-  ctx.rotate(-0.15);
-  const glareGrad = ctx.createLinearGradient(-100, 0, w + 100, 0);
-  glareGrad.addColorStop(0.3, 'rgba(255, 255, 255, 0)');
-  glareGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.07)');
-  glareGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.12)');
-  glareGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.04)');
-  glareGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0)');
-  ctx.fillStyle = glareGrad;
-  ctx.fillRect(-200, 100, w * 1.5, 140);
-  ctx.restore();
 }
 
-/**
- * Renders an authentic Bengaluru Darshini hotel tariff board
- */
-function renderDarshiniScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  // Tile background (classic Darshini white ceramic tiles with grout)
-  ctx.fillStyle = '#1E293B';
+/** 2. Namma Metro Sign */
+function renderMetroScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.fillStyle = '#090D16';
   ctx.fillRect(0, 0, w, h);
 
-  // Darshini wall tiles
+  // Metro station granite tiles
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctx.lineWidth = 1;
-  for (let x = 0; x < w; x += 60) {
+  for (let x = 0; x < w; x += 80) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, h);
     ctx.stroke();
   }
-  for (let y = 0; y < h; y += 60) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-  }
 
-  // Polished Rosewood / Brass Board
-  const boardX = 80;
-  const boardY = 50;
-  const boardW = w - 160;
-  const boardH = h - 90;
+  // Metro Signboard Box
+  const mx = 90, my = 50, mw = w - 180, mh = 340;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(mx + 8, my + 8, mw, mh);
 
-  // Shadow
+  // Purple / Green line dual gradient
+  const metroGrad = ctx.createLinearGradient(mx, my, mx + mw, my);
+  metroGrad.addColorStop(0, '#3B0764');
+  metroGrad.addColorStop(0.5, '#4C1D95');
+  metroGrad.addColorStop(1, '#064E3B');
+  ctx.fillStyle = metroGrad;
+  ctx.beginPath();
+  ctx.roundRect(mx, my, mw, mh, 16);
+  ctx.fill();
+
+  ctx.strokeStyle = '#CBD5E1';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // BMRCL Logo / Header
+  ctx.fillStyle = '#F8FAFC';
+  ctx.font = '800 14px "JetBrains Mono", monospace';
+  ctx.fillText('NAMMA METRO (BMRCL) • PURPLE & GREEN LINE INTERCHANGE', mx + 30, my + 45);
+
+  // Metro line color stripes
+  ctx.fillStyle = '#A855F7';
+  ctx.fillRect(mx + 30, my + 60, mw - 60, 4);
+  ctx.fillStyle = '#22C55E';
+  ctx.fillRect(mx + 30, my + 66, mw - 60, 4);
+}
+
+/** 3. Darshini Hotel Menu */
+function renderDarshiniScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.fillStyle = '#1E293B';
+  ctx.fillRect(0, 0, w, h);
+
+  const boardX = 80, boardY = 50, boardW = w - 160, boardH = h - 90;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(boardX + 8, boardY + 10, boardW, boardH);
 
-  // Outer Wood Frame
   const woodGrad = ctx.createLinearGradient(boardX, boardY, boardX + boardW, boardY + boardH);
   woodGrad.addColorStop(0, '#5C240A');
   woodGrad.addColorStop(0.5, '#78350F');
@@ -157,71 +176,31 @@ function renderDarshiniScene(ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.fillStyle = woodGrad;
   ctx.fillRect(boardX, boardY, boardW, boardH);
 
-  // Brass inner border
   ctx.strokeStyle = '#FACC15';
   ctx.lineWidth = 3;
   ctx.strokeRect(boardX + 12, boardY + 12, boardW - 24, boardH - 24);
 
-  // Board Header
   ctx.fillStyle = '#FEF08A';
   ctx.font = '800 22px "Noto Sans Kannada", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('ಶ್ರೀ ಕೃಷ್ಣ ಭವನ - ತಿಂಡಿ ದರ ಪಟ್ಟಿ', w / 2, boardY + 45);
-
-  // Divider line
-  ctx.strokeStyle = '#F59E0B';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(boardX + 40, boardY + 60);
-  ctx.lineTo(boardX + boardW - 40, boardY + 60);
-  ctx.stroke();
   ctx.textAlign = 'start';
-
-  // Brass Corner Studs
-  const studs = [
-    [boardX + 18, boardY + 18],
-    [boardX + boardW - 18, boardY + 18],
-    [boardX + 18, boardY + boardH - 18],
-    [boardX + boardW - 18, boardY + boardH - 18],
-  ];
-  for (const [sx, sy] of studs) {
-    ctx.fillStyle = '#FDE047';
-    ctx.beginPath();
-    ctx.arc(sx, sy, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#78350F';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
 }
 
-/**
- * Renders an official BBMP / Traffic Police green street sign
- */
+/** 4. Traffic Sign */
 function renderStreetScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  // Outdoor urban atmosphere background
   ctx.fillStyle = '#0F172A';
   ctx.fillRect(0, 0, w, h);
 
-  // Signboard Post
   ctx.fillStyle = '#475569';
   ctx.fillRect(w / 2 - 12, 0, 24, h);
-  ctx.fillStyle = '#64748B';
-  ctx.fillRect(w / 2 - 12, 0, 6, h); // specular highlight on metal pipe
 
-  // Metal Signboard Plate
-  const signX = 100;
-  const signY = 60;
-  const signW = w - 200;
-  const signH = 370;
-
-  // Sign Drop shadow
+  const signX = 100, signY = 60, signW = w - 200, signH = 370;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.beginPath();
   ctx.roundRect(signX + 6, signY + 8, signW, signH, 18);
   ctx.fill();
 
-  // Highway retro-reflective Green
   const greenGrad = ctx.createLinearGradient(signX, signY, signX + signW, signY + signH);
   greenGrad.addColorStop(0, '#047857');
   greenGrad.addColorStop(0.5, '#065F46');
@@ -231,64 +210,51 @@ function renderStreetScene(ctx: CanvasRenderingContext2D, w: number, h: number):
   ctx.roundRect(signX, signY, signW, signH, 18);
   ctx.fill();
 
-  // White retroreflective double border
   ctx.strokeStyle = '#FFFFFF';
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.roundRect(signX + 12, signY + 12, signW - 24, signH - 24, 12);
   ctx.stroke();
-
-  // Municipal Emblem Watermark
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(signX + signW - 60, signY + 60, 28, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.font = '700 10px monospace';
-  ctx.fillText('BBMP', signX + signW - 74, signY + 64);
-
-  // Rivets/Bolts
-  const bolts = [
-    [signX + 24, signY + 24],
-    [signX + signW - 24, signY + 24],
-    [signX + 24, signY + signH - 24],
-    [signX + signW - 24, signY + signH - 24],
-    [w / 2, signY + 24],
-    [w / 2, signY + signH - 24],
-  ];
-  for (const [bx, by] of bolts) {
-    ctx.fillStyle = '#CBD5E1';
-    ctx.beginPath();
-    ctx.arc(bx, by, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
 }
 
-/**
- * Renders an ancient weathered granite Shilashasana (Hero Stone / Begur Inscription)
- */
+/** 5. Shop Board (Mysore Silk & Sweets) */
+function renderShopScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.fillStyle = '#18181B';
+  ctx.fillRect(0, 0, w, h);
+
+  const sx = 90, sy = 55, sw = w - 180, sh = 350;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(sx + 8, sy + 8, sw, sh);
+
+  const silkGrad = ctx.createLinearGradient(sx, sy, sx + sw, sy + sh);
+  silkGrad.addColorStop(0, '#701A75');
+  silkGrad.addColorStop(0.5, '#831843');
+  silkGrad.addColorStop(1, '#500724');
+  ctx.fillStyle = silkGrad;
+  ctx.beginPath();
+  ctx.roundRect(sx, sy, sw, sh, 14);
+  ctx.fill();
+
+  ctx.strokeStyle = '#FACC15';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(sx + 10, sy + 10, sw - 20, sh - 20);
+
+  ctx.fillStyle = '#FEF08A';
+  ctx.font = '800 13px "JetBrains Mono", monospace';
+  ctx.fillText('ESTD 1948 • CHICKPET / AVENUE ROAD, BENGALURU-560053', sx + 30, sy + 45);
+}
+
+/** 6. Begur Shilashasana Stone */
 function renderShilashasanaScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  // Ancient temple niche background
   ctx.fillStyle = '#111827';
   ctx.fillRect(0, 0, w, h);
 
-  // Granite Stone Slab coordinates
-  const stoneX = 110;
-  const stoneY = 40;
-  const stoneW = w - 220;
-  const stoneH = h - 70;
-
-  // Heavy stone shadow
+  const stoneX = 110, stoneY = 40, stoneW = w - 220, stoneH = h - 70;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
   ctx.beginPath();
   ctx.roundRect(stoneX + 12, stoneY + 16, stoneW, stoneH, 24);
   ctx.fill();
 
-  // Granite textured gradient
   const stoneGrad = ctx.createLinearGradient(stoneX, stoneY, stoneX + stoneW, stoneY + stoneH);
   stoneGrad.addColorStop(0, '#4B5563');
   stoneGrad.addColorStop(0.3, '#374151');
@@ -299,43 +265,78 @@ function renderShilashasanaScene(ctx: CanvasRenderingContext2D, w: number, h: nu
   ctx.roundRect(stoneX, stoneY, stoneW, stoneH, 20);
   ctx.fill();
 
-  // Natural granite stone speckles & erosion fissures
+  // Granite speckles
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-  for (let i = 0; i < 240; i++) {
+  for (let i = 0; i < 200; i++) {
     const rx = stoneX + (i * 37) % stoneW;
     const ry = stoneY + (i * 59) % stoneH;
     ctx.fillRect(rx, ry, (i % 4) + 1, (i % 3) + 1);
   }
 
-  // Weathering fissure cracks
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(stoneX + 80, stoneY + 20);
-  ctx.lineTo(stoneX + 130, stoneY + 90);
-  ctx.lineTo(stoneX + 110, stoneY + 180);
-  ctx.lineTo(stoneX + 160, stoneY + 260);
-  ctx.stroke();
-
-  // Chiseled header relief
   ctx.fillStyle = '#9CA3AF';
   ctx.font = '700 13px "JetBrains Mono", monospace';
   ctx.fillText('BEGUR HERO STONE • C. 890 CE • GANGA DYNASTY', stoneX + 30, stoneY + 40);
-
-  // Sculpted Kalasa / Sun & Moon relief icons at top
-  ctx.strokeStyle = '#6B7280';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(stoneX + stoneW - 60, stoneY + 40, 14, 0, Math.PI * 2);
-  ctx.stroke(); // Sun emblem
-  ctx.beginPath();
-  ctx.arc(stoneX + stoneW - 100, stoneY + 40, 14, Math.PI * 0.2, Math.PI * 1.5);
-  ctx.stroke(); // Crescent Moon emblem
 }
 
-/**
- * Draws the original Kannada text on the canvas based on region bounds
- */
+/** 7. Rajyotsava Celebration Banner */
+function renderBannerScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.fillStyle = '#090D16';
+  ctx.fillRect(0, 0, w, h);
+
+  const bx = 80, by = 50, bw = w - 160, bh = 350;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(bx + 8, by + 10, bw, bh);
+
+  // Karnataka Flag bicolour (Yellow top, Red bottom)
+  const flagGrad = ctx.createLinearGradient(bx, by, bx, by + bh);
+  flagGrad.addColorStop(0, '#B91C1C');
+  flagGrad.addColorStop(0.5, '#DC2626');
+  flagGrad.addColorStop(1, '#991B1B');
+  ctx.fillStyle = flagGrad;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, bw, bh, 14);
+  ctx.fill();
+
+  ctx.strokeStyle = '#FACC15';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(bx + 10, by + 10, bw - 20, bh - 20);
+
+  ctx.fillStyle = '#FEF08A';
+  ctx.font = '800 14px "Noto Sans Kannada", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('ಕರ್ನಾಟಕ ರಾಜ್ಯೋತ್ಸವ ದಿನಾಚರಣೆ - ನವೆಂಬರ್ ೧', w / 2, by + 45);
+  ctx.textAlign = 'start';
+}
+
+/** 8. Municipal Street Name Board */
+function renderStreetBoardScene(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.fillStyle = '#0F172A';
+  ctx.fillRect(0, 0, w, h);
+
+  const sx = 90, sy = 55, sw = w - 180, sh = 350;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(sx + 8, sy + 8, sw, sh);
+
+  // Municipal Yellow board
+  const streetGrad = ctx.createLinearGradient(sx, sy, sx + sw, sy + sh);
+  streetGrad.addColorStop(0, '#F59E0B');
+  streetGrad.addColorStop(0.5, '#EAB308');
+  streetGrad.addColorStop(1, '#D97706');
+  ctx.fillStyle = streetGrad;
+  ctx.beginPath();
+  ctx.roundRect(sx, sy, sw, sh, 14);
+  ctx.fill();
+
+  ctx.strokeStyle = '#0B0F19';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(sx + 10, sy + 10, sw - 20, sh - 20);
+
+  ctx.fillStyle = '#0B0F19';
+  ctx.font = '800 13px "JetBrains Mono", monospace';
+  ctx.fillText('ಬೃಹತ್ ಬೆಂಗಳೂರು ಮಹಾನಗರ ಪಾಲಿಕೆ (BBMP)', sx + 30, sy + 45);
+}
+
+/** Original text drawing */
 function drawOriginalKannadaText(
   ctx: CanvasRenderingContext2D,
   region: { kannadaText: string; quad: { x: number; y: number }[]; textColor: string; fontCategory: string }
@@ -350,15 +351,12 @@ function drawOriginalKannadaText(
   ctx.translate(centerX, centerY);
   ctx.rotate(angle);
 
-  // Dynamic font sizing based on box width
-  const fontSize = Math.max(16, Math.min(42, Math.floor(width / (region.kannadaText.length * 0.85))));
+  const fontSize = Math.max(16, Math.min(38, Math.floor(width / (region.kannadaText.length * 0.85))));
   ctx.font = `800 ${fontSize}px "Noto Sans Kannada", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Apply subtle drop-shadow or chiseled carve effect
   if (region.fontCategory === 'HERITAGE_STONE') {
-    // Chiseled relief effect: dark shadow on top-left, lighter highlight on bottom-right
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.fillText(region.kannadaText, -1, -1);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
@@ -375,9 +373,7 @@ function drawOriginalKannadaText(
   ctx.restore();
 }
 
-/**
- * CLAHE + Adaptive Threshold + Relief Filter for Shilashasana stone epigraphy
- */
+/** Shilashasana CLAHE Filter */
 function applyCLAHEAndReliefFilter(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -388,24 +384,20 @@ function applyCLAHEAndReliefFilter(
     const imgData = ctx.getImageData(0, 0, w, h);
     const d = imgData.data;
 
-    // Fast local contrast enhancement and relief embossing
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2];
-      // Luminance
       const lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-      // High-contrast S-curve stretch (simulating CLAHE)
       let contrast = (lum - 128) * strength + 128;
       contrast = Math.max(0, Math.min(255, contrast));
 
-      // Amber/Gold epigraphical enhancement tint
-      d[i] = Math.min(255, contrast * 1.15);     // Red
-      d[i + 1] = Math.min(255, contrast * 0.95); // Green
-      d[i + 2] = Math.min(255, contrast * 0.65); // Blue
+      d[i] = Math.min(255, contrast * 1.15);
+      d[i + 1] = Math.min(255, contrast * 0.95);
+      d[i + 2] = Math.min(255, contrast * 0.65);
     }
 
     ctx.putImageData(imgData, 0, 0);
   } catch {
-    // Ignore canvas security errors if untrusted images
+    // Ignore canvas security errors
   }
 }

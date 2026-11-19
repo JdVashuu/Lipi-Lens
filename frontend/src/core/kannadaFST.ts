@@ -1,10 +1,17 @@
 /**
- * LipiLens-X (ಲಿಪಿ ಲೆನ್ಸ್-X) - Deterministic Kannada Akshara FST Parser
+ * ಲಿಪಿ ಲೆನ್ಸ್ | Lipi Lens - Deterministic Kannada Akshara FST Parser
  * Unicode Block: U+0C80 - U+0CFF
  *
  * Implements an exact Finite-State Transducer (FST) for the Kannada abugida script.
  * Decomposes complex consonant clusters (ottaksharas), vowel modifiers (kagunita),
  * halant/virama (pollu), and yogavaahas into an Abstract Syntax Tree (AST).
+ *
+ * Verified Unicode Code Points:
+ * - Virama / Halant / Pollu: U+0CCD (್)
+ * - Short O sign: U+0CCA (ೊ, Ottva - Hrasva)
+ * - Long O sign:  U+0CCB (ೋ, Ottva Dirgha - Dirgha)
+ * - Anusvara:     U+0C82 (ಂ)
+ * - Visarga:      U+0C83 (ಃ)
  */
 
 export interface OttaksharaInfo {
@@ -46,7 +53,8 @@ export interface AksharaNode {
   phoneticIPA: string;
   transliteration: string;
   formationFormula: string;
-  durationMs: number; // For syllable TTS sync
+  equationKannada: string; // e.g. "ಜ್ + ಯ್ + ೋ = ಜ್ಯೋ"
+  durationMs: number;
 }
 
 export interface WordAnalysis {
@@ -56,6 +64,7 @@ export interface WordAnalysis {
   transliteration: string;
   sandhiInfo?: {
     type: string;
+    kannadaType: string;
     description: string;
     split: [string, string];
     rule: string;
@@ -66,172 +75,209 @@ export interface WordAnalysis {
 // Kannada Unicode Metadata Tables (U+0C80 - U+0CFF)
 // --------------------------------------------------------------------------
 
-export const KANNADA_INDEPENDENT_VOWELS: Record<string, { name: string; ipa: string; trans: string; isLong: boolean }> = {
-  '\u0C85': { name: 'ಅ (Hrasva A)', ipa: 'ɐ', trans: 'a', isLong: false },
-  '\u0C86': { name: 'ಆ (Dirgha Aa)', ipa: 'aː', trans: 'ā', isLong: true },
-  '\u0C87': { name: 'ಇ (Hrasva I)', ipa: 'i', trans: 'i', isLong: false },
-  '\u0C88': { name: 'ಈ (Dirgha Ee)', ipa: 'iː', trans: 'ī', isLong: true },
-  '\u0C89': { name: 'ಉ (Hrasva U)', ipa: 'u', trans: 'u', isLong: false },
-  '\u0C8A': { name: 'ಊ (Dirgha Oo)', ipa: 'uː', trans: 'ū', isLong: true },
-  '\u0C8B': { name: 'ಋ (Rishi Ru)', ipa: 'ru', trans: 'r̥', isLong: false },
-  '\u0C8C': { name: 'ಌ (Lu)', ipa: 'lu', trans: 'l̥', isLong: false },
-  '\u0C8E': { name: 'ಎ (Hrasva E)', ipa: 'e', trans: 'e', isLong: false },
-  '\u0C8F': { name: 'ಏ (Dirgha Ee)', ipa: 'eː', trans: 'ē', isLong: true },
-  '\u0C90': { name: 'ಐ (Ai)', ipa: 'aɪ', trans: 'ai', isLong: true },
-  '\u0C92': { name: 'ಒ (Hrasva O)', ipa: 'o', trans: 'o', isLong: false },
-  '\u0C93': { name: 'ಓ (Dirgha Oo)', ipa: 'oː', trans: 'ō', isLong: true },
-  '\u0C94': { name: 'ಔ (Au)', ipa: 'aʊ', trans: 'au', isLong: true },
+export const KANNADA_INDEPENDENT_VOWELS: Record<string, { name: string; kannadaName: string; ipa: string; trans: string; isLong: boolean }> = {
+  '\u0C85': { name: 'A (Hrasva)', kannadaName: 'ಅ (ಹ್ರಸ್ವ ಅ)', ipa: 'ɐ', trans: 'a', isLong: false },
+  '\u0C86': { name: 'Aa (Dirgha)', kannadaName: 'ಆ (ದೀರ್ಘ ಆ)', ipa: 'aː', trans: 'ā', isLong: true },
+  '\u0C87': { name: 'I (Hrasva)', kannadaName: 'ಇ (ಹ್ರಸ್ವ ಇ)', ipa: 'i', trans: 'i', isLong: false },
+  '\u0C88': { name: 'Ee (Dirgha)', kannadaName: 'ಈ (ದೀರ್ಘ ಈ)', ipa: 'iː', trans: 'ī', isLong: true },
+  '\u0C89': { name: 'U (Hrasva)', kannadaName: 'ಉ (ಹ್ರಸ್ವ ಉ)', ipa: 'u', trans: 'u', isLong: false },
+  '\u0C8A': { name: 'Oo (Dirgha)', kannadaName: 'ಊ (ದೀರ್ಘ ಊ)', ipa: 'uː', trans: 'ū', isLong: true },
+  '\u0C8B': { name: 'Ru (Hrasva)', kannadaName: 'ಋ (ಋಕಾರ)', ipa: 'ru', trans: 'r̥', isLong: false },
+  '\u0C8C': { name: 'Lu (Archaic)', kannadaName: 'ಌ (ಲುಕಾರ)', ipa: 'lu', trans: 'l̥', isLong: false },
+  '\u0C8E': { name: 'E (Hrasva)', kannadaName: 'ಎ (ಹ್ರಸ್ವ ಎ)', ipa: 'e', trans: 'e', isLong: false },
+  '\u0C8F': { name: 'Ee (Dirgha)', kannadaName: 'ಏ (ದೀರ್ಘ ಏ)', ipa: 'eː', trans: 'ē', isLong: true },
+  '\u0C90': { name: 'Ai (Dirgha)', kannadaName: 'ಐ (ಐಕಾರ)', ipa: 'aɪ', trans: 'ai', isLong: true },
+  '\u0C92': { name: 'O (Hrasva)', kannadaName: 'ಒ (ಹ್ರಸ್ವ ಒ)', ipa: 'o', trans: 'o', isLong: false },
+  '\u0C93': { name: 'Oo (Dirgha)', kannadaName: 'ಓ (ದೀರ್ಘ ಓ)', ipa: 'oː', trans: 'ō', isLong: true },
+  '\u0C94': { name: 'Au (Dirgha)', kannadaName: 'ಔ (ಔಕಾರ)', ipa: 'aʊ', trans: 'au', isLong: true },
 };
 
-export const KANNADA_CONSONANTS: Record<string, { name: string; ipa: string; trans: string; varga: string }> = {
-  // Ka Varga (Guttural)
-  '\u0C95': { name: 'ಕ (Ka-kara)', ipa: 'k', trans: 'k', varga: 'Kanthya (Velar)' },
-  '\u0C96': { name: 'ಖ (Kha-kara)', ipa: 'kʰ', trans: 'kh', varga: 'Kanthya (Velar)' },
-  '\u0C97': { name: 'ಗ (Ga-kara)', ipa: 'ɡ', trans: 'g', varga: 'Kanthya (Velar)' },
-  '\u0C98': { name: 'ಘ (Gha-kara)', ipa: 'ɡʱ', trans: 'gh', varga: 'Kanthya (Velar)' },
-  '\u0C99': { name: 'ಙ (Nga-kara)', ipa: 'ŋ', trans: 'ṅ', varga: 'Kanthya (Velar)' },
-  // Cha Varga (Palatal)
-  '\u0C9A': { name: 'ಚ (Cha-kara)', ipa: 't͡ʃ', trans: 'c', varga: 'Talavya (Palatal)' },
-  '\u0C9B': { name: 'ಛ (Chha-kara)', ipa: 't͡ʃʰ', trans: 'ch', varga: 'Talavya (Palatal)' },
-  '\u0C9C': { name: 'ಜ (Ja-kara)', ipa: 'd͡ʒ', trans: 'j', varga: 'Talavya (Palatal)' },
-  '\u0C9D': { name: 'ಝ (Jha-kara)', ipa: 'd͡ʒʱ', trans: 'jh', varga: 'Talavya (Palatal)' },
-  '\u0C9E': { name: 'ಞ (Nya-kara)', ipa: 'ɲ', trans: 'ñ', varga: 'Talavya (Palatal)' },
-  // Ta Varga (Retroflex)
-  '\u0C9F': { name: 'ಟ (Ta-kara)', ipa: 'ʈ', trans: 'ṭ', varga: 'Murdhanya (Retroflex)' },
-  '\u0CA0': { name: 'ಠ (Tha-kara)', ipa: 'ʈʰ', trans: 'ṭh', varga: 'Murdhanya (Retroflex)' },
-  '\u0CA1': { name: 'ಡ (Da-kara)', ipa: 'ɖ', trans: 'ḍ', varga: 'Murdhanya (Retroflex)' },
-  '\u0CA2': { name: 'ಢ (Dha-kara)', ipa: 'ɖʱ', trans: 'ḍh', varga: 'Murdhanya (Retroflex)' },
-  '\u0CA3': { name: 'ಣ (Na-kara)', ipa: 'ɳ', trans: 'ṇ', varga: 'Murdhanya (Retroflex)' },
-  // Tha Varga (Dental)
-  '\u0CA4': { name: 'ತ (Ta-kara)', ipa: 't̪', trans: 't', varga: 'Dantya (Dental)' },
-  '\u0CA5': { name: 'ಥ (Tha-kara)', ipa: 't̪ʰ', trans: 'th', varga: 'Dantya (Dental)' },
-  '\u0CA6': { name: 'ದ (Da-kara)', ipa: 'd̪', trans: 'd', varga: 'Dantya (Dental)' },
-  '\u0CA7': { name: 'ಧ (Dha-kara)', ipa: 'd̪ʱ', trans: 'dh', varga: 'Dantya (Dental)' },
-  '\u0CA8': { name: 'ನ (Na-kara)', ipa: 'n̪', trans: 'n', varga: 'Dantya (Dental)' },
-  // Pa Varga (Labial)
-  '\u0CAA': { name: 'ಪ (Pa-kara)', ipa: 'p', trans: 'p', varga: 'Oshthya (Labial)' },
-  '\u0CAB': { name: 'ಫ (Pha-kara)', ipa: 'pʰ', trans: 'ph', varga: 'Oshthya (Labial)' },
-  '\u0CAC': { name: 'ಬ (Ba-kara)', ipa: 'b', trans: 'b', varga: 'Oshthya (Labial)' },
-  '\u0CAD': { name: 'ಭ (Bha-kara)', ipa: 'bʱ', trans: 'bh', varga: 'Oshthya (Labial)' },
-  '\u0CAE': { name: 'ಮ (Ma-kara)', ipa: 'm', trans: 'm', varga: 'Oshthya (Labial)' },
+export const KANNADA_CONSONANTS: Record<string, { name: string; kannadaName: string; ipa: string; trans: string; varga: string }> = {
+  // Ka Varga (Guttural / Kanthya)
+  '\u0C95': { name: 'Ka', kannadaName: 'ಕ (ಕ-ಕಾರ)', ipa: 'k', trans: 'k', varga: 'ಕಂಠ್ಯ (Kanthya / Velar)' },
+  '\u0C96': { name: 'Kha', kannadaName: 'ಖ (ಖ-ಕಾರ)', ipa: 'kʰ', trans: 'kh', varga: 'ಕಂಠ್ಯ (Kanthya / Velar)' },
+  '\u0C97': { name: 'Ga', kannadaName: 'ಗ (ಗ-ಕಾರ)', ipa: 'ɡ', trans: 'g', varga: 'ಕಂಠ್ಯ (Kanthya / Velar)' },
+  '\u0C98': { name: 'Gha', kannadaName: 'ಘ (ಘ-ಕಾರ)', ipa: 'ɡʱ', trans: 'gh', varga: 'ಕಂಠ್ಯ (Kanthya / Velar)' },
+  '\u0C99': { name: 'Nga', kannadaName: 'ಙ (ಙ-ಕಾರ)', ipa: 'ŋ', trans: 'ṅ', varga: 'ಕಂಠ್ಯ (Kanthya / Velar)' },
+  // Cha Varga (Palatal / Talavya)
+  '\u0C9A': { name: 'Cha', kannadaName: 'ಚ (ಚ-ಕಾರ)', ipa: 't͡ʃ', trans: 'c', varga: 'ತಾಲವ್ಯ (Talavya / Palatal)' },
+  '\u0C9B': { name: 'Chha', kannadaName: 'ಛ (ಛ-ಕಾರ)', ipa: 't͡ʃʰ', trans: 'ch', varga: 'ತಾಲವ್ಯ (Talavya / Palatal)' },
+  '\u0C9C': { name: 'Ja', kannadaName: 'ಜ (ಜ-ಕಾರ)', ipa: 'd͡ʒ', trans: 'j', varga: 'ತಾಲವ್ಯ (Talavya / Palatal)' },
+  '\u0C9D': { name: 'Jha', kannadaName: 'ಝ (ಝ-ಕಾರ)', ipa: 'd͡ʒʱ', trans: 'jh', varga: 'ತಾಲವ್ಯ (Talavya / Palatal)' },
+  '\u0C9E': { name: 'Nya', kannadaName: 'ಞ (ಞ-ಕಾರ)', ipa: 'ɲ', trans: 'ñ', varga: 'ತಾಲವ್ಯ (Talavya / Palatal)' },
+  // Ta Varga (Retroflex / Murdhanya)
+  '\u0C9F': { name: 'Ta', kannadaName: 'ಟ (ಟ-ಕಾರ)', ipa: 'ʈ', trans: 'ṭ', varga: 'ಮೂರ್ಧನ್ಯ (Murdhanya / Retroflex)' },
+  '\u0CA0': { name: 'Tha', kannadaName: 'ಠ (ಠ-ಕಾರ)', ipa: 'ʈʰ', trans: 'ṭh', varga: 'ಮೂರ್ಧನ್ಯ (Murdhanya / Retroflex)' },
+  '\u0CA1': { name: 'Da', kannadaName: 'ಡ (ಡ-ಕಾರ)', ipa: 'ɖ', trans: 'ḍ', varga: 'ಮೂರ್ಧನ್ಯ (Murdhanya / Retroflex)' },
+  '\u0CA2': { name: 'Dha', kannadaName: 'ಢ (ಢ-ಕಾರ)', ipa: 'ɖʱ', trans: 'ḍh', varga: 'ಮೂರ್ಧನ್ಯ (Murdhanya / Retroflex)' },
+  '\u0CA3': { name: 'Na', kannadaName: 'ಣ (ಣ-ಕಾರ)', ipa: 'ɳ', trans: 'ṇ', varga: 'ಮೂರ್ಧನ್ಯ (Murdhanya / Retroflex)' },
+  // Tha Varga (Dental / Dantya)
+  '\u0CA4': { name: 'Ta', kannadaName: 'ತ (ತ-ಕಾರ)', ipa: 't̪', trans: 't', varga: 'ದಂತ್ಯ (Dantya / Dental)' },
+  '\u0CA5': { name: 'Tha', kannadaName: 'ಥ (ಥ-ಕಾರ)', ipa: 't̪ʰ', trans: 'th', varga: 'ದಂತ್ಯ (Dantya / Dental)' },
+  '\u0CA6': { name: 'Da', kannadaName: 'ದ (ದ-ಕಾರ)', ipa: 'd̪', trans: 'd', varga: 'ದಂತ್ಯ (Dantya / Dental)' },
+  '\u0CA7': { name: 'Dha', kannadaName: 'ಧ (ಧ-ಕಾರ)', ipa: 'd̪ʱ', trans: 'dh', varga: 'ದಂತ್ಯ (Dantya / Dental)' },
+  '\u0CA8': { name: 'Na', kannadaName: 'ನ (ನ-ಕಾರ)', ipa: 'n̪', trans: 'n', varga: 'ದಂತ್ಯ (Dantya / Dental)' },
+  // Pa Varga (Labial / Oshthya)
+  '\u0CAA': { name: 'Pa', kannadaName: 'ಪ (ಪ-ಕಾರ)', ipa: 'p', trans: 'p', varga: 'ಓಷ್ಠ್ಯ (Oshthya / Labial)' },
+  '\u0CAB': { name: 'Pha', kannadaName: 'ಫ (ಫ-ಕಾರ)', ipa: 'pʰ', trans: 'ph', varga: 'ಓಷ್ಠ್ಯ (Oshthya / Labial)' },
+  '\u0CAC': { name: 'Ba', kannadaName: 'ಬ (ಬ-ಕಾರ)', ipa: 'b', trans: 'b', varga: 'ಓಷ್ಠ್ಯ (Oshthya / Labial)' },
+  '\u0CAD': { name: 'Bha', kannadaName: 'ಭ (ಭ-ಕಾರ)', ipa: 'bʱ', trans: 'bh', varga: 'ಓಷ್ಠ್ಯ (Oshthya / Labial)' },
+  '\u0CAE': { name: 'Ma', kannadaName: 'ಮ (ಮ-ಕಾರ)', ipa: 'm', trans: 'm', varga: 'ಓಷ್ಠ್ಯ (Oshthya / Labial)' },
   // Avargiya Vyanjanas (Approximants & Fricatives)
-  '\u0CAF': { name: 'ಯ (Ya-kara)', ipa: 'j', trans: 'y', varga: 'Avargiya' },
-  '\u0CB0': { name: 'ರ (Ra-kara)', ipa: 'r', trans: 'r', varga: 'Avargiya' },
-  '\u0CB1': { name: 'ಱ (Kula Ra-kara / Rra)', ipa: 'r', trans: 'ṟ', varga: 'Avargiya (Archaic)' },
-  '\u0CB2': { name: 'ಲ (La-kara)', ipa: 'l', trans: 'l', varga: 'Avargiya' },
-  '\u0CB3': { name: 'ಳ (Kula La-kara)', ipa: 'ɭ', trans: 'ḷ', varga: 'Avargiya' },
-  '\u0CB5': { name: 'ವ (Va-kara)', ipa: 'ʋ', trans: 'v', varga: 'Avargiya' },
-  '\u0CB6': { name: 'ಶ (Sha-kara)', ipa: 'ʃ', trans: 'ś', varga: 'Talavya Fricative' },
-  '\u0CB7': { name: 'ಷ (Shha-kara)', ipa: 'ʂ', trans: 'ṣ', varga: 'Murdhanya Fricative' },
-  '\u0CB8': { name: 'ಸ (Sa-kara)', ipa: 's', trans: 's', varga: 'Dantya Fricative' },
-  '\u0CB9': { name: 'ಹ (Ha-kara)', ipa: 'h', trans: 'h', varga: 'Kanthya Fricative' },
-  '\u0CDE': { name: 'ೞ (Fa / Za / Archaic Lla)', ipa: 'ɻ', trans: 'ḻ', varga: 'Halegannada Archaic' },
+  '\u0CAF': { name: 'Ya', kannadaName: 'ಯ (ಯ-ಕಾರ)', ipa: 'j', trans: 'y', varga: 'ಅವರ್ಗೀಯ (Avargiya)' },
+  '\u0CB0': { name: 'Ra', kannadaName: 'ರ (ರ-ಕಾರ)', ipa: 'r', trans: 'r', varga: 'ಅವರ್ಗೀಯ (Avargiya)' },
+  '\u0CB1': { name: 'Rra (Archaic)', kannadaName: 'ಱ (ಶಕಟ ರೇಫ)', ipa: 'r', trans: 'ṟ', varga: 'ಅವರ್ಗೀಯ - ಹಳಗನ್ನಡ (Old Kannada)' },
+  '\u0CB2': { name: 'La', kannadaName: 'ಲ (ಲ-ಕಾರ)', ipa: 'l', trans: 'l', varga: 'ಅವರ್ಗೀಯ (Avargiya)' },
+  '\u0CB3': { name: 'Lla', kannadaName: 'ಳ (ಳ-ಕಾರ)', ipa: 'ɭ', trans: 'ḷ', varga: 'ಅವರ್ಗೀಯ (Avargiya)' },
+  '\u0CB5': { name: 'Va', kannadaName: 'ವ (ವ-ಕಾರ)', ipa: 'ʋ', trans: 'v', varga: 'ಅವರ್ಗೀಯ (Avargiya)' },
+  '\u0CB6': { name: 'Sha', kannadaName: 'ಶ (ಶ-ಕಾರ)', ipa: 'ʃ', trans: 'ś', varga: 'ತಾಲವ್ಯ (Talavya Fricative)' },
+  '\u0CB7': { name: 'Shha', kannadaName: 'ಷ (ಷ-ಕಾರ)', ipa: 'ʂ', trans: 'ṣ', varga: 'ಮೂರ್ಧನ್ಯ (Murdhanya Fricative)' },
+  '\u0CB8': { name: 'Sa', kannadaName: 'ಸ (ಸ-ಕಾರ)', ipa: 's', trans: 's', varga: 'ದಂತ್ಯ (Dantya Fricative)' },
+  '\u0CB9': { name: 'Ha', kannadaName: 'ಹ (ಹ-ಕಾರ)', ipa: 'h', trans: 'h', varga: 'ಕಂಠ್ಯ (Kanthya Fricative)' },
+  '\u0CDE': { name: 'Zha (Archaic)', kannadaName: 'ೞ (ಕುಳ / ೞ-ಕಾರ)', ipa: 'ɻ', trans: 'ḻ', varga: 'ಹಳಗನ್ನಡ ಅಪೂರ್ವ (Archaic)' },
 };
 
-export const KANNADA_DEPENDENT_VOWELS: Record<string, { name: string; ipa: string; trans: string; isLong: boolean }> = {
-  '\u0CBE': { name: 'ಾ (Dirgha / A-kara Matra)', ipa: 'aː', trans: 'ā', isLong: true },
-  '\u0CBF': { name: 'ಿ (Gudisu / I-kara Matra)', ipa: 'i', trans: 'i', isLong: false },
-  '\u0CC0': { name: 'ೀ (Gudisu Dirgha / Ee Matra)', ipa: 'iː', trans: 'ī', isLong: true },
-  '\u0CC1': { name: 'ು (Kommu / U-kara Matra)', ipa: 'u', trans: 'u', isLong: false },
-  '\u0CC2': { name: 'ೂ (Kommu Dirgha / Oo Matra)', ipa: 'uː', trans: 'ū', isLong: true },
-  '\u0CC3': { name: 'ೃ (Vattusuli / Ru Matra)', ipa: 'ru', trans: 'r̥', isLong: false },
-  '\u0CC4': { name: 'ೄ (Vattusuli Dirgha)', ipa: 'ruː', trans: 'r̥̄', isLong: true },
-  '\u0CC6': { name: 'ೆ (Ettva / E-kara Matra)', ipa: 'e', trans: 'e', isLong: false },
-  '\u0CC7': { name: 'ೇ (Ettva Dirgha / Ee Matra)', ipa: 'eː', trans: 'ē', isLong: true },
-  '\u0CC8': { name: 'ೈ (Aitva / Ai Matra)', ipa: 'aɪ', trans: 'ai', isLong: true },
-  '\u0CCA': { name: 'ೊ (Ottva / O-kara Matra)', ipa: 'o', trans: 'o', isLong: false },
-  '\u0CCB': { name: 'ೋ (Ottva Dirgha / Oo Matra)', ipa: 'oː', trans: 'ō', isLong: true },
-  '\u0CCC': { name: 'ೌ (Autva / Au Matra)', ipa: 'aʊ', trans: 'au', isLong: true },
+/**
+ * Dependent Vowels (Kagunita Matras):
+ * Note: U+0CCA is short-o (ೊ), U+0CCB is long-o (ೋ)!
+ */
+export const KANNADA_DEPENDENT_VOWELS: Record<string, { name: string; kannadaName: string; ipa: string; trans: string; isLong: boolean }> = {
+  '\u0CBE': { name: 'A-kara Matra', kannadaName: 'ಾ (ದೀರ್ಘ / ಆ-ಕಾರ)', ipa: 'aː', trans: 'ā', isLong: true },
+  '\u0CBF': { name: 'I-kara Matra', kannadaName: 'ಿ (ಗುಡಿಸು / ಇ-ಕಾರ)', ipa: 'i', trans: 'i', isLong: false },
+  '\u0CC0': { name: 'Ee-kara Matra', kannadaName: 'ೀ (ಗುಡಿಸು ದೀರ್ಘ / ಈ-ಕಾರ)', ipa: 'iː', trans: 'ī', isLong: true },
+  '\u0CC1': { name: 'U-kara Matra', kannadaName: 'ು (ಕೊಂಬು / ಉ-ಕಾರ)', ipa: 'u', trans: 'u', isLong: false },
+  '\u0CC2': { name: 'Oo-kara Matra', kannadaName: 'ೂ (ಕೊಂಬು ದೀರ್ಘ / ಊ-ಕಾರ)', ipa: 'uː', trans: 'ū', isLong: true },
+  '\u0CC3': { name: 'Ru-kara Matra', kannadaName: 'ೃ (ವಟ್ಟುಸುಳಿ / ಋ-ಕಾರ)', ipa: 'ru', trans: 'r̥', isLong: false },
+  '\u0CC4': { name: 'Ruu-kara Matra', kannadaName: 'ೄ (ವಟ್ಟುಸುಳಿ ದೀರ್ಘ)', ipa: 'ruː', trans: 'r̥̄', isLong: true },
+  '\u0CC6': { name: 'E-kara Matra (Short)', kannadaName: 'ೆ (ಎತ್ವ / ಹ್ರಸ್ವ ಎ-ಕಾರ)', ipa: 'e', trans: 'e', isLong: false },
+  '\u0CC7': { name: 'Ee-kara Matra (Long)', kannadaName: 'ೇ (ಎತ್ವ ದೀರ್ಘ / ದೀರ್ಘ ಏ-ಕಾರ)', ipa: 'eː', trans: 'ē', isLong: true },
+  '\u0CC8': { name: 'Ai-kara Matra', kannadaName: 'ೈ (ಐತ್ವ / ಐ-ಕಾರ)', ipa: 'aɪ', trans: 'ai', isLong: true },
+  '\u0CCA': { name: 'O-kara Matra (Short-O)', kannadaName: 'ೊ (ಒತ್ವ / ಹ್ರಸ್ವ ಒ-ಕಾರ)', ipa: 'o', trans: 'o', isLong: false },
+  '\u0CCB': { name: 'Oo-kara Matra (Long-O)', kannadaName: 'ೋ (ಒತ್ವ ದೀರ್ಘ / ದೀರ್ಘ ಓ-ಕಾರ)', ipa: 'oː', trans: 'ō', isLong: true },
+  '\u0CCC': { name: 'Au-kara Matra', kannadaName: 'ೌ (ಔತ್ವ / ಔ-ಕಾರ)', ipa: 'aʊ', trans: 'au', isLong: true },
 };
 
 export const VIRAMA = '\u0CCD'; // ್ (Halant / Pollu)
 export const ANUSVARA = '\u0C82'; // ಂ
 export const VISARGA = '\u0C83'; // ಃ
 
-// Common Sandhi and Compound dictionaries for Bengaluru & Karnataka Context
-export const KNOWN_SANDHI_WORDS: Record<string, { type: string; split: [string, string]; rule: string; description: string }> = {
-  'ಕನ್ನಡೋತ್ಸವ': {
-    type: 'ಗುಣ ಸಂಧಿ (Guna Sandhi)',
-    split: ['ಕನ್ನಡ', 'ಉತ್ಸವ'],
-    rule: 'ಅ/ಆ + ಉ/ಊ = ಓ',
-    description: 'Kannada + Utsava = Kannadotsava (Celebration of Kannada culture)',
-  },
+// Hand-curated Sandhi Table with precise grammatical rules
+export const KNOWN_SANDHI_WORDS: Record<string, {
+  type: string;
+  kannadaType: string;
+  split: [string, string];
+  rule: string;
+  description: string;
+}> = {
   'ರಾಜ್ಯೋತ್ಸವ': {
-    type: 'ಗುಣ ಸಂಧಿ (Guna Sandhi)',
+    type: 'Guna Sandhi',
+    kannadaType: 'ಗುಣ ಸಂಧಿ',
     split: ['ರಾಜ್ಯ', 'ಉತ್ಸವ'],
-    rule: 'ಅ/ಆ + ಉ/ಊ = ಓ',
-    description: 'Rajya (State) + Utsava (Festival) = Karnataka Statehood Day',
+    rule: 'ರಾಜ್ಯ (ಅ) + ಉತ್ಸವ (ಉ) = ರಾಜ್ಯೋತ್ಸವ (ಓ)',
+    description: 'Rajya (State) + Utsava (Celebration) = Karnataka State Formation Day (1 Nov 1956)',
+  },
+  'ಕನ್ನಡೋತ್ಸವ': {
+    type: 'Guna Sandhi',
+    kannadaType: 'ಗುಣ ಸಂಧಿ',
+    split: ['ಕನ್ನಡ', 'ಉತ್ಸವ'],
+    rule: 'ಕನ್ನಡ (ಅ) + ಉತ್ಸವ (ಉ) = ಕನ್ನಡೋತ್ಸವ (ಓ)',
+    description: 'Kannada + Utsava = Celebration of Kannada Language and Culture',
   },
   'ವಿದ್ಯಾಭ್ಯಾಸ': {
-    type: 'ಸವರ್ಣದೀರ್ಘ ಸಂಧಿ (Savarnadirgha Sandhi)',
+    type: 'Savarnadirgha Sandhi',
+    kannadaType: 'ಸವರ್ಣದೀರ್ಘ ಸಂಧಿ',
     split: ['ವಿದ್ಯಾ', 'ಅಭ್ಯಾಸ'],
-    rule: 'ಆ + ಅ = ಆ',
-    description: 'Vidya (Knowledge) + Abhyasa (Practice) = Education',
+    rule: 'ವಿದ್ಯಾ (ಆ) + ಅಭ್ಯಾಸ (ಅ) = ವಿದ್ಯಾಭ್ಯಾಸ (ಆ)',
+    description: 'Vidya (Knowledge) + Abhyasa (Practice) = Education / Studies',
   },
   'ದೇವಸ್ಥಾನ': {
-    type: 'ತತ್ಪುರುಷ ಸಮಾಸ / ಸಂಸ್ಕೃತ ಸಂಧಿ (Compound)',
+    type: 'Tatpurusha Samasa / Sandhi',
+    kannadaType: 'ತತ್ಪುರುಷ ಸಮಾಸ',
     split: ['ದೇವ', 'ಸ್ಥಾನ'],
-    rule: 'ದೇವರ ಸ್ಥಾನ = ದೇವಸ್ಥಾನ',
-    description: 'Deva (Diety) + Sthana (Abode) = Temple',
+    rule: 'ದೇವರ + ಸ್ಥಾನ = ದೇವಸ್ಥಾನ',
+    description: 'Deva (Deity) + Sthana (Abode) = Temple',
   },
   'ಮಾತಿಲ್ಲ': {
-    type: 'ಲೋಪ ಸಂಧಿ (Lopa Sandhi)',
+    type: 'Lopa Sandhi (Kannada)',
+    kannadaType: 'ಲೋಪ ಸಂಧಿ',
     split: ['ಮಾತು', 'ಇಲ್ಲ'],
-    rule: 'ಉ + ಇ = ಇ (ಉ ಲೋಪ)',
-    description: 'Matu (Words) + Illa (None) = Speechless',
+    rule: 'ಮಾತು (ಉ) + ಇಲ್ಲ (ಇ) = ಮಾತಿಲ್ಲ (ಇ, ಉ-ಕಾರ ಲೋಪ)',
+    description: 'Matu (Word) + Illa (No) = Wordless / Speechless',
   },
   'ಮನೆಯನ್ನು': {
-    type: 'ಆಗಮ ಸಂಧಿ - ಯಕಾರಾಗಮ (Yakaragama Sandhi)',
+    type: 'Aagama Sandhi (Yakaragama)',
+    kannadaType: 'ಆಗಮ ಸಂಧಿ (ಯಕಾರಾಗಮ)',
     split: ['ಮನೆ', 'ಅನ್ನು'],
-    rule: 'ಎ + ಅ = ಎ + ಯ್ + ಅ',
-    description: 'Mane (Home) + Annu (Accusative marker) = Home (Object)',
+    rule: 'ಮನೆ (ಎ) + ಅನ್ನು (ಅ) = ಮನೆ + ಯ್ + ಅನ್ನು',
+    description: 'Mane (House) + Annu (Accusative marker) = To the house',
   },
   'ಮರವನ್ನು': {
-    type: 'ಆಗಮ ಸಂಧಿ - ವಕಾರಾಗಮ (Vakaragama Sandhi)',
+    type: 'Aagama Sandhi (Vakaragama)',
+    kannadaType: 'ಆಗಮ ಸಂಧಿ (ವಕಾರಾಗಮ)',
     split: ['ಮರ', 'ಅನ್ನು'],
-    rule: 'ಅ + ಅ = ಅ + ವ್ + ಅ',
-    description: 'Mara (Tree) + Annu (Accusative marker) = Tree (Object)',
+    rule: 'ಮರ (ಅ) + ಅನ್ನು (ಅ) = ಮರ + ವ್ + ಅನ್ನು',
+    description: 'Mara (Tree) + Annu (Accusative marker) = To the tree',
   },
   'ಕಂಬನಿ': {
-    type: 'ಆದೇಶ ಸಂಧಿ (Aadesha Sandhi)',
+    type: 'Aadesha Sandhi',
+    kannadaType: 'ಆದೇಶ ಸಂಧಿ',
     split: ['ಕಣ್', 'ಪನಿ'],
-    rule: 'ಪ ಕಾರಕ್ಕೆ ಬ ಕಾರ ಆದೇಶ',
-    description: 'Kannu (Eye) + Pani (Drop) = Tears',
+    rule: 'ಕಣ್ + ಪನಿ = ಕಂಬನಿ (ಪ-ಕಾರಕ್ಕೆ ಬ-ಕಾರ ಆದೇಶ)',
+    description: 'Kannu (Eye) + Pani (Drop) = Tear drops',
   },
   'ಬೆಂಗಾವಲು': {
-    type: 'ಆದೇಶ ಸಂಧಿ (Aadesha Sandhi)',
+    type: 'Aadesha Sandhi',
+    kannadaType: 'ಆದೇಶ ಸಂಧಿ',
     split: ['ಬೆನ್', 'ಕಾವಲು'],
-    rule: 'ಕ ಕಾರಕ್ಕೆ ಗ ಕಾರ ಆದೇಶ',
-    description: 'Rear guard / protection',
+    rule: 'ಬೆನ್ + ಕಾವಲು = ಬೆಂಗಾವಲು (ಕ-ಕಾರಕ್ಕೆ ಗ-ಕಾರ ಆದೇಶ)',
+    description: 'Rear guard / Security protection',
   },
   'ಬೆಂಗಳೂರು': {
-    type: 'ಐತಿಹಾಸಿಕ ನಾಮಪದ (Historical Etymology)',
+    type: 'Historical Epigraphical Name',
+    kannadaType: 'ಐತಿಹಾಸಿಕ ನಾಮಪದ (೮೯೦ ಕ್ರಿ.ಶ. ಬೇಗೂರು ಶಾಸನ)',
     split: ['ಬೆಂದ', 'ಕಾಳೂರು'],
-    rule: 'ಬೆಂದ ಕಾಳು + ಊರು = ಬೆಂಗಳೂರು (City of Boiled Beans / Begur Inscription Bengaval-ooru)',
-    description: 'Historic city name rooted in the 890 CE Begur Hero Stone inscription',
+    rule: 'ಬೆಂದ ಕಾಳು + ಊರು / ಬೆಂಗಾವಲ್-ಊರು',
+    description: 'City of Bengaluru, attested in the 890 CE Begur Ganga Hero Stone as "ಬೆಂಗಳೂರ ಕಾಳಗದೊಳ್"',
   },
   'ಮೈಸೂರು': {
-    type: 'ಪೌರಾಣಿಕ ನಾಮಪದ (Mythological Compound)',
+    type: 'Mythological Compound',
+    kannadaType: 'ತತ್ಪುರುಷ ಸಮಾಸ',
     split: ['ಮಹಿಷ', 'ಊರು'],
-    rule: 'ಮಹಿಷನ ಊರು = ಮೈಸೂರು',
-    description: 'Mahishasura + Ooru = City of Mahisha',
+    rule: 'ಮಹಿಷನ + ಊರು = ಮೈಸೂರು',
+    description: 'City of Mahisha / Mysuru royal capital of Wadiyars',
   },
   'ವಿಧಾನಸೌಧ': {
-    type: 'ಕರ್ಮಧಾರಯ ಸಮಾಸ (Compound)',
+    type: 'Karmadharaya Samasa',
+    kannadaType: 'ಕರ್ಮಧಾರಯ ಸಮಾಸ',
     split: ['ವಿಧಾನ', 'ಸೌಧ'],
-    rule: 'ವಿಧಾನವನ್ನು ರಚಿಸುವ ಸೌಧ',
-    description: 'Legislative + Mansion = Karnataka State Capitol',
+    rule: 'ವಿಧಾನದ + ಸೌಧ = ವಿಧಾನಸೌಧ',
+    description: 'Seat of Karnataka State Legislature',
   },
   'ಬಿಸಿಬೇಳೆಬಾತ್': {
-    type: 'ಕನ್ನಡ ಪಾಕಶಾಸ್ತ್ರ ಸಮಾಸ (Culinary Compound)',
+    type: 'Culinary Compound',
+    kannadaType: 'ಕನ್ನಡ ಪಾಕಶಾಸ್ತ್ರ ಸಮಾಸ',
     split: ['ಬಿಸಿ ಬೇಳೆ', 'ಭಾತ್'],
-    rule: 'ಬಿಸಿಯಾದ ಬೇಳೆಯ ಅನ್ನ',
-    description: 'Iconic Karnataka spiced lentil and rice specialty dish',
+    rule: 'ಬಿಸಿಯಾದ ಬೇಳೆ + ಅನ್ನ (ಭಾತ್)',
+    description: 'Iconic Karnataka spiced lentil and rice dish born in Mysore Palace kitchens',
+  },
+  'ಗುರುಪದೇಶ': {
+    type: 'Guna Sandhi',
+    kannadaType: 'ಗುಣ ಸಂಧಿ',
+    split: ['ಗುರು', 'ಉಪದೇಶ'],
+    rule: 'ಗುರು (ಉ) + ಉಪದೇಶ (ಉ) = ಗುರುಪದೇಶ',
+    description: 'Preceptor teachings',
+  },
+  'ಸೂರ್ಯೋದಯ': {
+    type: 'Guna Sandhi',
+    kannadaType: 'ಗುಣ ಸಂಧಿ',
+    split: ['ಸೂರ್ಯ', 'ಉದಯ'],
+    rule: 'ಸೂರ್ಯ (ಅ) + ಉದಯ (ಉ) = ಸೂರ್ಯೋದಯ (ಓ)',
+    description: 'Surya (Sun) + Udaya (Rise) = Sunrise',
   },
 };
 
 /**
- * Helper to convert Unicode codepoint to formatted hex string (U+0C9C)
+ * Helper to convert character or string to hex format (U+0C9C)
  */
 export function toHexCode(char: string): string {
   const code = char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0');
@@ -242,7 +288,6 @@ export function toHexCode(char: string): string {
  * Deterministic Unicode FST: Segments and tokenizes Kannada text into grapheme cluster AST
  */
 export function parseKannadaText(text: string): WordAnalysis[] {
-  // Normalize Unicode representation to NFC
   const normalized = text.normalize('NFC');
   const words = normalized.split(/([ \t\n\r,.:;!?"'()[\]{}]+)/).filter(Boolean);
 
@@ -265,6 +310,7 @@ export function parseKannadaText(text: string): WordAnalysis[] {
         phoneticIPA: '',
         transliteration: chunk,
         formationFormula: chunk,
+        equationKannada: chunk,
         durationMs: 80,
       }];
       return {
@@ -275,13 +321,13 @@ export function parseKannadaText(text: string): WordAnalysis[] {
       };
     }
 
-    // Segment word into Aksharas using Kannada Abugida FST state machine
+    // Segment word into Aksharas using Kannada Abugida FST
     const aksharas = segmentWordIntoAksharas(chunk);
     const ipa = aksharas.map(a => a.phoneticIPA).join('');
     const transliteration = aksharas.map(a => a.transliteration).join('');
 
     // Check for known sandhi breakdown
-    const cleanedWord = chunk.replace(/[.,!?:;]/g, '').trim();
+    const cleanedWord = chunk.replace(/[.,!?:;'"(){}\[\]]/g, '').trim();
     const sandhiInfo = KNOWN_SANDHI_WORDS[cleanedWord];
 
     return {
@@ -297,7 +343,7 @@ export function parseKannadaText(text: string): WordAnalysis[] {
 /**
  * Core FST State Machine: Parses a single Kannada word into Aksharas
  */
-function segmentWordIntoAksharas(word: string): AksharaNode[] {
+export function segmentWordIntoAksharas(word: string): AksharaNode[] {
   const result: AksharaNode[] = [];
   let i = 0;
   const len = word.length;
@@ -331,13 +377,16 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         i++;
       }
 
+      const eqParts: string[] = [char];
+      if (yogavaaha) eqParts.push(yogavaaha.glyph);
+
       result.push({
         id: `akshara-${aksharaIndex++}`,
         raw,
         index: aksharaIndex - 1,
         type: 'INDEPENDENT_VOWEL',
         baseGlyph: char,
-        baseName: vowelData.name,
+        baseName: vowelData.kannadaName,
         baseUnicode: toHexCode(char),
         inherentVowel: vowelData.ipa,
         vowelSign: null,
@@ -347,6 +396,7 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         phoneticIPA: `[${ipa}]`,
         transliteration: trans,
         formationFormula: `[ ${char} (${toHexCode(char)}) ] = ${raw}`,
+        equationKannada: `${eqParts.join(' + ')} = ${raw}`,
         durationMs: vowelData.isLong ? 260 : 160,
       });
       continue;
@@ -366,7 +416,6 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
 
       // FST loop: Check for virama U+0CCD followed by another consonant (Ottakshara chain)
       while (i < len && word[i] === VIRAMA) {
-        // Lookahead to see if next character is a consonant
         if (i + 1 < len && KANNADA_CONSONANTS[word[i + 1]]) {
           const nextConsonant = word[i + 1];
           const conjunctData = KANNADA_CONSONANTS[nextConsonant];
@@ -374,11 +423,11 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
           ottaksharas.push({
             glyph: nextConsonant,
             consonant: nextConsonant,
-            name: `${conjunctData.name.split(' ')[0]}-ವತ್ತು (${conjunctData.trans}-vattu)`,
+            name: `${conjunctData.name}-ವತ್ತು (${conjunctData.trans}-vattu)`,
             unicode: toHexCode(nextConsonant),
             viramaCode: toHexCode(VIRAMA),
           });
-          i += 2; // consumed virama + consonant
+          i += 2;
         } else {
           // Virama without another consonant = Pure consonant with Halant/Pollu (e.g. ಕ್, ನ್, ಲ್)
           raw += VIRAMA;
@@ -395,7 +444,7 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         raw += matraChar;
         vowelSign = {
           glyph: matraChar,
-          name: matraData.name,
+          name: matraData.kannadaName,
           unicode: toHexCode(matraChar),
           sound: matraData.ipa,
           isLong: matraData.isLong,
@@ -419,7 +468,6 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
       let trans = baseConsonantData.trans;
       let ipa = baseConsonantData.ipa;
 
-      // Append ottaksharas to pronunciation and transliteration
       for (const otta of ottaksharas) {
         const cData = KANNADA_CONSONANTS[otta.consonant];
         if (cData) {
@@ -428,19 +476,16 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         }
       }
 
-      // Append vowel
       if (viramaPresent) {
-        // No vowel sound (silent pollu)
+        // silent pollu
       } else if (vowelSign) {
         trans += vowelSign.glyph ? KANNADA_DEPENDENT_VOWELS[vowelSign.glyph]?.trans || '' : '';
         ipa += vowelSign.sound;
       } else {
-        // Inherent vowel 'a'
         trans += 'a';
         ipa += 'ɐ';
       }
 
-      // Append yogavaaha
       if (yogavaaha) {
         if (yogavaaha.type === 'ANUSVARA') {
           trans += 'ṁ';
@@ -451,23 +496,35 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         }
       }
 
-      // Build Formation Formula
+      // Build Detailed Unicode Formation Formula
+      // e.g. [ ಜ್ (U+0C9C+U+0CCD) ] + [ ಯ್ (U+0CAF+U+0CCD) ] + [ ೋ (U+0CCB) ] = ಜ್ಯೋ
       const formulaParts: string[] = [];
+      const kannadaEqParts: string[] = [];
+
       formulaParts.push(`[ ${baseConsonantChar}್ (${toHexCode(baseConsonantChar)}+${toHexCode(VIRAMA)}) ]`);
+      kannadaEqParts.push(`${baseConsonantChar}್`);
+
       for (const otta of ottaksharas) {
         formulaParts.push(`[ ${otta.consonant}್ (${otta.unicode}+${otta.viramaCode}) ]`);
+        kannadaEqParts.push(`${otta.consonant}್`);
       }
+
       if (vowelSign) {
         formulaParts.push(`[ ${vowelSign.glyph} (${vowelSign.unicode}) ]`);
+        kannadaEqParts.push(vowelSign.glyph);
       } else if (!viramaPresent) {
         formulaParts.push(`[ ಅ (Inherent 'a') ]`);
+        kannadaEqParts.push('ಅ');
       }
+
       if (yogavaaha) {
         formulaParts.push(`[ ${yogavaaha.glyph} (${yogavaaha.unicode}) ]`);
+        kannadaEqParts.push(yogavaaha.glyph);
       }
-      const formationFormula = `${formulaParts.join(' + ')} = ${raw}`;
 
-      // Calculate phonetic duration
+      const formationFormula = `${formulaParts.join(' + ')} = ${raw}`;
+      const equationKannada = `${kannadaEqParts.join(' + ')} = ${raw}`;
+
       let durationMs = 180;
       if (ottaksharas.length > 0) durationMs += 100 * ottaksharas.length;
       if (vowelSign?.isLong) durationMs += 120;
@@ -478,7 +535,7 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         index: aksharaIndex - 1,
         type: ottaksharas.length > 0 ? 'CONJUNCT' : 'CONSONANT',
         baseGlyph: baseConsonantChar,
-        baseName: baseConsonantData.name,
+        baseName: baseConsonantData.kannadaName,
         baseUnicode: toHexCode(baseConsonantChar),
         inherentVowel: viramaPresent ? 'none' : (vowelSign ? vowelSign.sound : 'ɐ'),
         vowelSign,
@@ -488,19 +545,20 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
         phoneticIPA: `[${ipa}]`,
         transliteration: trans,
         formationFormula,
+        equationKannada,
         durationMs,
       });
       continue;
     }
 
-    // Case 3: Other character (e.g. English letter, Kannada digits, or punctuation)
+    // Case 3: Other character
     result.push({
       id: `char-${aksharaIndex++}`,
       raw: char,
       index: aksharaIndex - 1,
       type: 'SPECIAL',
       baseGlyph: char,
-      baseName: `Glyph (${char})`,
+      baseName: `ಅಕ್ಷರ (${char})`,
       baseUnicode: toHexCode(char),
       inherentVowel: '',
       vowelSign: null,
@@ -510,6 +568,7 @@ function segmentWordIntoAksharas(word: string): AksharaNode[] {
       phoneticIPA: char,
       transliteration: char,
       formationFormula: `${char} = ${char}`,
+      equationKannada: `${char} = ${char}`,
       durationMs: 120,
     });
     i++;

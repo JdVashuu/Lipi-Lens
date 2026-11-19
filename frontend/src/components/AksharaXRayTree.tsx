@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Volume2, Sparkles, BookOpen, Layers } from 'lucide-react';
-import { AksharaNode, WordAnalysis } from '../core/kannadaFST';
+import { AksharaNode, WordAnalysis, parseKannadaText } from '../core/kannadaFST';
 import { ttsEngine } from '../core/ttsEngine';
 
 interface AksharaXRayTreeProps {
-  analysis: WordAnalysis | null;
+  analysis?: WordAnalysis | null;
+  targetWord?: string;
   onClose?: () => void;
 }
 
-export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onClose }) => {
+export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({
+  analysis: propAnalysis,
+  targetWord,
+  onClose,
+}) => {
+  const analysis: WordAnalysis | null = propAnalysis || (targetWord ? parseKannadaText(targetWord)[0] : null);
+
   const [selectedAksharaIndex, setSelectedAksharaIndex] = useState<number>(0);
   const [activeAudioIndex, setActiveAudioIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -16,7 +23,6 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
 
   useEffect(() => {
     if (analysis && analysis.aksharas.length > 0) {
-      // Pick first non-whitespace akshara
       const firstValid = analysis.aksharas.findIndex(a => a.type !== 'WHITESPACE');
       setSelectedAksharaIndex(firstValid >= 0 ? firstValid : 0);
     }
@@ -44,27 +50,27 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
   };
 
   return (
-    <div className="bg-space-900/95 backdrop-blur-xl border border-rajyotsava-gold/30 rounded-2xl p-5 shadow-hud text-slate-100 flex flex-col gap-5 relative overflow-hidden">
-      {/* Background Decorative Kannada Watermark */}
+    <div className="bg-space-900/95 backdrop-blur-xl border border-rajyotsava-gold/40 rounded-2xl p-5 shadow-hud text-slate-100 flex flex-col gap-5 relative overflow-hidden">
+      {/* Decorative Kannada Watermark */}
       <div className="absolute right-4 -bottom-6 text-9xl font-black text-white/[0.02] pointer-events-none select-none font-kannada">
         {analysis.word.slice(0, 3)}
       </div>
 
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-rajyotsava-gold/20 flex items-center justify-center text-rajyotsava-gold border border-rajyotsava-gold/40">
+          <div className="w-8 h-8 rounded-lg bg-rajyotsava-gold/20 flex items-center justify-center text-rajyotsava-gold border border-rajyotsava-gold/40 shadow-glow-gold">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <span>Akshara X-Ray Deconstructor</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-rajyotsava-crimson/20 border border-rajyotsava-crimson/40 text-rajyotsava-crimson font-mono">
-                FST U+0C80–U+0CFF
+              <span>ಅಕ್ಷರ ಎಕ್ಸ್-ರೇ | Akshara X-Ray Deconstructor</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-rajyotsava-crimson/20 border border-rajyotsava-crimson/40 text-rajyotsava-crimson font-mono font-bold">
+                Unicode FST U+0C80–U+0CFF
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              Deterministic Unicode Abugida Morphology & Conjunct Decomposition
+              Deterministic abugida morphology without LLM hallucinations. Mathematical equation decomposition.
             </p>
           </div>
         </div>
@@ -96,7 +102,7 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
             }`}
           >
             <Volume2 className="w-3.5 h-3.5" />
-            <span>Speak</span>
+            <span>ಉಚ್ಚಾರಣೆ (Speak)</span>
           </button>
 
           {onClose && (
@@ -114,7 +120,7 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
       <div className="bg-space-850/90 border border-slate-700/60 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-1">
-            Word Vector Analysis
+            Word Vector Analysis (ಪದ ವಿಶ್ಲೇಷಣೆ)
           </span>
           <div className="flex items-baseline gap-3">
             <span className="text-3xl font-extrabold font-kannada text-rajyotsava-gold tracking-wide">
@@ -134,7 +140,7 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
           <div className="bg-rajyotsava-crimson/10 border border-rajyotsava-crimson/30 rounded-lg p-2.5 max-w-sm">
             <div className="flex items-center gap-1.5 text-xs font-bold text-rajyotsava-crimson mb-1">
               <BookOpen className="w-3.5 h-3.5" />
-              <span>{analysis.sandhiInfo.type}</span>
+              <span>{analysis.sandhiInfo.kannadaType} ({analysis.sandhiInfo.type})</span>
             </div>
             <div className="text-xs font-mono text-slate-200">
               <span className="text-rajyotsava-gold font-bold">{analysis.sandhiInfo.split[0]}</span>
@@ -155,7 +161,7 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono uppercase text-slate-400 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-rajyotsava-gold" />
-            <span>Select Akshara Grapheme Cluster (ಅಕ್ಷರ ಪಟ್ಟಿ):</span>
+            <span>ಅಕ್ಷರ ಪಟ್ಟಿ (Select Grapheme Cluster):</span>
           </span>
           <span className="text-[11px] font-mono text-slate-500">
             {validAksharas.length} Grapheme Clusters
@@ -182,7 +188,6 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
                     : 'bg-space-850/60 border-slate-700/60 text-slate-300 hover:border-slate-500'
                 }`}
               >
-                {/* Cluster Badge */}
                 <span className={`text-2xl font-bold font-kannada transition-colors ${
                   isAudioActive ? 'text-space-950 font-black' : isSelected ? 'text-rajyotsava-gold' : 'text-slate-100'
                 }`}>
@@ -195,7 +200,6 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
                   {akshara.transliteration}
                 </span>
 
-                {/* Ottakshara indicator pip */}
                 {akshara.ottaksharas.length > 0 && (
                   <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center font-mono ${
                     isAudioActive ? 'bg-space-950 text-rajyotsava-gold' : 'bg-rajyotsava-crimson text-white'
@@ -209,34 +213,47 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
         </div>
       </div>
 
-      {/* Deep Akshara Decomposition Tree & Formula */}
+      {/* Deep Akshara Decomposition Tree & Formation Equations */}
       {activeAkshara && (
         <div className="bg-space-850 border border-slate-700/80 rounded-xl p-4 flex flex-col gap-4">
-          {/* Mathematical Equation Ribbon */}
-          <div className="bg-space-950/70 border border-slate-800 rounded-lg p-3">
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-1">
-              Symbolic Formation Formula (ಗಣಿತೀಯ ಅಕ್ಷರ ಸೂತ್ರ)
-            </span>
-            <div className="text-sm font-mono text-rajyotsava-gold font-semibold overflow-x-auto whitespace-nowrap">
-              {activeAkshara.formationFormula}
+          {/* Dual Equations: Kannada Script Formula + Full Unicode Code Points */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Clean Kannada Equation */}
+            <div className="bg-space-950/80 border border-slate-800 rounded-lg p-3">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-1">
+                ಅಕ್ಷರ ಸಂಯೋಗ ಸೂತ್ರ (Kannada Script Equation)
+              </span>
+              <div className="text-base font-kannada font-bold text-rajyotsava-gold">
+                {activeAkshara.equationKannada}
+              </div>
+            </div>
+
+            {/* Unicode Codepoints with Correct U+0CCB Long-O */}
+            <div className="bg-space-950/80 border border-slate-800 rounded-lg p-3">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-1">
+                ಯುನಿಕೋಡ್ ಸಂಕೇತ ಸೂತ್ರ (Unicode Formation Formula)
+              </span>
+              <div className="text-xs font-mono text-cyan-300 font-semibold overflow-x-auto whitespace-nowrap">
+                {activeAkshara.formationFormula}
+              </div>
             </div>
           </div>
 
-          {/* Deconstructed Sub-Components Grid */}
+          {/* Sub-Components Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* 1. Base Consonant / Swara */}
+            {/* 1. Base Element */}
             <div className="bg-space-900/90 border border-slate-700/60 rounded-xl p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
-                  <span>1. Base Element (ಮೂಲ)</span>
-                  <span className="text-cyan-400">{activeAkshara.baseUnicode}</span>
+                  <span>೧. ಮೂಲ ಧಾತು (Base Consonant)</span>
+                  <span className="text-cyan-400 font-bold">{activeAkshara.baseUnicode}</span>
                 </div>
                 <div className="flex items-center gap-3 my-1">
                   <span className="text-3xl font-extrabold font-kannada text-cyan-300">
                     {activeAkshara.baseGlyph}
                   </span>
                   <div>
-                    <div className="text-xs font-bold text-white">
+                    <div className="text-xs font-bold text-white font-kannada">
                       {activeAkshara.baseName}
                     </div>
                     <div className="text-[11px] font-mono text-slate-400">
@@ -254,9 +271,9 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
             <div className="bg-space-900/90 border border-slate-700/60 rounded-xl p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
-                  <span>2. Ottaksharas (ಒತ್ತಕ್ಷರ)</span>
-                  <span className="text-rajyotsava-crimson">
-                    {activeAkshara.ottaksharas.length > 0 ? `${activeAkshara.ottaksharas.length} Conjunct` : 'None'}
+                  <span>೨. ಒತ್ತಕ್ಷರ (Subscript Conjuncts)</span>
+                  <span className="text-rajyotsava-crimson font-bold">
+                    {activeAkshara.ottaksharas.length > 0 ? `${activeAkshara.ottaksharas.length} Ottu` : 'None'}
                   </span>
                 </div>
 
@@ -268,29 +285,29 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
                           {otta.glyph}
                         </span>
                         <div className="text-xs">
-                          <span className="text-slate-200 font-bold block">{otta.name}</span>
-                          <span className="text-[10px] font-mono text-slate-400">{otta.unicode} + {otta.viramaCode}</span>
+                          <span className="text-slate-200 font-bold font-kannada block">{otta.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">{otta.unicode} + {otta.viramaCode} (ವಿರಾಮ)</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-xs text-slate-500 py-3 italic">
-                    Pure or single consonant (no subscript conjuncts)
+                    Pure single consonant (no subscript conjuncts)
                   </div>
                 )}
               </div>
               <div className="text-[10px] font-mono text-slate-500 mt-2 border-t border-slate-800 pt-1">
-                Virama U+0CCD Joiner
+                ವಿರಾಮ ಚಿಹ್ನೆ (Virama U+0CCD Joiner)
               </div>
             </div>
 
-            {/* 3. Kagunita (Vowel Modifier) & Yogavaaha */}
+            {/* 3. Kagunita & Yogavaaha */}
             <div className="bg-space-900/90 border border-slate-700/60 rounded-xl p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
-                  <span>3. Kagunita & Yogavaaha</span>
-                  <span className="text-emerald-400">
+                  <span>೩. ಕಾಗುಣಿತ / ಯೋಗವಾಹ (Vowel Mod)</span>
+                  <span className="text-emerald-400 font-bold">
                     {activeAkshara.vowelSign ? activeAkshara.vowelSign.unicode : 'Inherent a'}
                   </span>
                 </div>
@@ -302,11 +319,11 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
                         {activeAkshara.vowelSign.glyph}
                       </span>
                       <div>
-                        <div className="text-xs font-bold text-slate-200">
+                        <div className="text-xs font-bold text-slate-200 font-kannada">
                           {activeAkshara.vowelSign.name}
                         </div>
                         <div className="text-[10px] font-mono text-slate-400">
-                          Duration: {activeAkshara.vowelSign.isLong ? '2 Matras (Dirgha)' : '1 Matra (Hrasva)'}
+                          {activeAkshara.vowelSign.isLong ? 'ದೀರ್ಘ (2 Matras / Morae)' : 'ಹ್ರಸ್ವ (1 Matra)'}
                         </div>
                       </div>
                     </div>
@@ -328,7 +345,7 @@ export const AksharaXRayTree: React.FC<AksharaXRayTreeProps> = ({ analysis, onCl
                 </div>
               </div>
               <div className="text-[10px] font-mono text-slate-500 mt-2 border-t border-slate-800 pt-1">
-                Mora: {activeAkshara.durationMs}ms acoustic window
+                Acoustic Window: {activeAkshara.durationMs}ms
               </div>
             </div>
           </div>

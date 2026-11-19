@@ -1,0 +1,16 @@
+{
+  "name": "ಲಿಪಿ ಲೆನ್ಸ್ | Lipi Lens",
+  "short_name": "LipiLens",
+  "description": "Read the city. Connect with 1,500+ years of Kannada. Edge-Native Spatial AR & Script Intelligence.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06080F",
+  "theme_color": "#FACC15",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
